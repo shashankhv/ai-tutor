@@ -1,141 +1,92 @@
-import { useState, useRef, useEffect } from "react";
-import axios from "axios";
+import { useEffect, useRef, useState, KeyboardEvent } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { RootState } from "./store";
 import ReactMarkdown from "react-markdown";
 import rehypeHighlight from "rehype-highlight";
 import 'highlight.js/styles/github-dark.css';
-interface Message {
-  sender: "user" | "ai";
-  text: string;
-}
-interface ChatBoxProps {
-  updateCodeEditor: (code: string) => void;
-}
-export default function ChatBox({ updateCodeEditor }: ChatBoxProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+import { sendChatMessage } from "./slices/chatSlice";
+import { setCode } from "./slices/codeSlice";
+import type { AppDispatch } from './store';
+export default function ChatBox() {
+  const messages = useSelector((state: RootState) => state.chat.messages);
+  const loading = useSelector((state: RootState) => state.chat.loading);
+  const dispatch = useDispatch<AppDispatch>();
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [codeBlockStatus, setCodeBlockStatus] = useState<Record<string, "pending" | "accepted" | "rejected">>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  function extractCodeBlock(content: string): string {
-    // This regex looks for a code block starting with ```javascript and ending with ```
-    const regex = /```javascript\s*([\s\S]*?)```/;
-    const match = content.match(regex);
-    return match ? match[1].trim() : "";
-  }
-
-
-  
-  const sendMessage = async () => {
-    if (!input.trim()) return;
-
-    const userMessage: Message = { sender: "user", text: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setLoading(true);
-
-    try {
-      const secretKey = import.meta.env.VITE_AGENT_SECRET;
-      const response = await axios.post(
-        "https://agent-lc3uy75jsr3juh4f77aaq4js-mpbmh.ondigitalocean.app/api/v1/chat/completions",
-        {
-          messages: [
-            {
-              role: "user",
-              content: input
-            }
-          ],
-          temperature: 0.7,
-          top_p: 0.9,
-          max_tokens: 1000,
-          max_completion_tokens: 1000,
-          stream: false,
-          k: 5,
-          retrieval_method: "rewrite",
-          frequency_penalty: 0,
-          presence_penalty: 0,
-          stop: null,
-          stream_options: {
-            include_usage: true
-          },
-          kb_filters: [
-            {
-              index: "0000000-0000-0000-0000-000000000000",
-              path: "docs/javascript_tutorial.csv"
-            },
-            {
-              index: "1111111-1111-1111-1111-111111111111"
-            }
-          ],
-          filter_kb_content_by_query_metadata: false,
-          instruction_override: "Answer only with the final answer. Do not include any internal reasoning or chain-of-thought.",
-          include_functions_info: false,
-          include_retrieval_info: false,
-          include_guardrails_info: false
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${secretKey}`,
-          },
-        }
-      );
-  let content = response.data.choices[0].message.content; 
-      const marker = "</think>";
-  if (content.includes(marker)) {
-    const parts = content.split(marker);
-    content = parts[parts.length - 1].trim();
-  }
-
-  const codeblock =  extractCodeBlock(content)
-
-  updateCodeEditor(codeblock)
-
-      // Extract message content from the response structure
-      const aiMessage: Message = {
-        sender: "ai",
-        text: content
-      };
-      setMessages((prev) => [...prev, aiMessage]);
-    } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        { sender: "ai", text: `❌ Error: ${err.message || "Something went wrong"}` },
-      ]);
-    }
-    setLoading(false);
+  const handleAccept = (key: string, code: string) => {
+    setCodeBlockStatus((prev) => ({ ...prev, [key]: "accepted" }));
+    dispatch(setCode(code));
   };
 
-  // Auto-scroll to the latest message
+  const handleReject = (key: string) => {
+    setCodeBlockStatus((prev) => ({ ...prev, [key]: "rejected" }));
+  };
+
+  const handleSend = () => {
+    if (input.trim()) {
+      dispatch(sendChatMessage(input));
+      setInput("");
+    }
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      handleSend();
+    }
+  };
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-gray-900 p-4">
+    <div className="flex flex-col flex-1 min-h-0 bg-gray-900 p-4 h-full">
       {/* Chat History */}
-      <div className="flex-1 overflow-y-auto space-y-4 min-h-0">
-        {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`flex ${
-              msg.sender === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
-            <div
-              className={`px-4 py-2 rounded-lg max-w-[70%] shadow-lg ${
-                msg.sender === "user"
-                  ? "bg-blue-600 text-white rounded-br-none"
-                  : "bg-gray-800 text-gray-100 rounded-bl-none"
-              }`}
-            >
+      <div className="flex-1 h-full overflow-y-auto space-y-4 min-h-0 scrollbar scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-show scrollbar-hide">
+        {messages.map((msg, msgIdx) => (
+          <div key={msgIdx} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`px-4 py-2 rounded-lg shadow-lg w-fit max-w-[70%] ${msg.sender === "user" ? "bg-blue-600 text-white" : "bg-gray-800 text-gray-100"}`}>
               {msg.sender === "ai" ? (
-                <ReactMarkdown rehypePlugins={[rehypeHighlight]}>{msg.text}</ReactMarkdown>
+                <div className="max-w-full overflow-x-auto whitespace-pre-wrap break-words">
+                  <ReactMarkdown rehypePlugins={[rehypeHighlight]}>
+                    {msg.text}
+                  </ReactMarkdown>
+                  {msg.codeBlocks && msg.codeBlocks.length > 0 && (
+                    <div className="mt-2 space-y-2">
+                      {msg.codeBlocks.map((code, codeIdx) => {
+                        const key = `${msgIdx}-${codeIdx}`;
+                        if (codeBlockStatus[key] && codeBlockStatus[key] !== "pending") {
+                          return null;
+                        }
+                        const preview = code.length > 100 ? code.substring(0, 100) + "..." : code;
+                        return (
+                          <div key={key} className="bg-gray-700 p-2 rounded-md">
+                            <div className="font-mono text-xs whitespace-pre-wrap overflow-x-auto">
+                              {preview}
+                            </div>
+                            <div className="flex justify-end mt-1 gap-2">
+                              <button onClick={() => handleAccept(key, code)} className="text-green-400 hover:underline">
+                                Accept
+                              </button>
+                              <button onClick={() => handleReject(key)} className="text-red-400 hover:underline">
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               ) : (
                 msg.text
               )}
             </div>
           </div>
         ))}
+        {/* Loader */}
         {loading && (
           <div className="flex justify-start">
             <div className="px-4 py-2 rounded-lg bg-gray-800 text-gray-100 shadow-lg">
@@ -152,18 +103,15 @@ export default function ChatBox({ updateCodeEditor }: ChatBoxProps) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={handleKeyDown}
           placeholder="Ask a question..."
           className="flex-1 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-800 text-gray-100"
         />
-        <button
-          onClick={sendMessage}
-          disabled={loading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-        >
+        <button onClick={handleSend} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
           Send
         </button>
       </div>
     </div>
   );
+   
 }

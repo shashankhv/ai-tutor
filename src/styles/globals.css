@@ -1,4 +1,31 @@
 @import "tailwindcss/preflight"
-@tailwind base;
-@tailwind components;
 @tailwind utilities;
+
+/* Fix code blocks in markdown */
+code {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+  }
+  
+  pre {
+    white-space: pre-wrap !important;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #2d2d2d; /* Dark gray track */
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: #555; /* Gray thumb */
+    border-radius: 3px;
+  }
+  
+  /* Custom scrollbar for Firefox */
+  .scrollable {
+    scrollbar-width: thin;
+    scrollbar-color: #555 #2d2d2d;
+  }
