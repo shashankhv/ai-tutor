@@ -7,6 +7,13 @@ import 'highlight.js/styles/github-dark.css';
 import { sendChatMessage } from "./slices/chatSlice";
 import { setCode } from "./slices/codeSlice";
 import type { AppDispatch } from './store';
+
+/**
+ * The ChatBox component provides a user interface for chatting with the AI tutor.
+ * It displays messages from both the user and the AI, handles user input,
+ * and allows the user to accept or reject code snippets provided by the AI.
+ * @returns {JSX.Element} The rendered ChatBox component.
+ */
 export default function ChatBox() {
   const messages = useSelector((state: RootState) => state.chat.messages);
   const loading = useSelector((state: RootState) => state.chat.loading);
@@ -15,15 +22,31 @@ export default function ChatBox() {
   const [codeBlockStatus, setCodeBlockStatus] = useState<Record<string, "pending" | "accepted" | "rejected">>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Handles accepting a code block from the AI.
+   * Marks the code block as 'accepted' and dispatches an action to update the code in the editor.
+   * @param {string} key - The unique identifier for the code block.
+   * @param {string} code - The code snippet to accept.
+   */
   const handleAccept = (key: string, code: string) => {
     setCodeBlockStatus((prev) => ({ ...prev, [key]: "accepted" }));
     dispatch(setCode(code));
   };
 
+  /**
+   * Handles rejecting a code block from the AI.
+   * Marks the code block as 'rejected'.
+   * @param {string} key - The unique identifier for the code block.
+   */
   const handleReject = (key: string) => {
     setCodeBlockStatus((prev) => ({ ...prev, [key]: "rejected" }));
   };
 
+  /**
+   * Sends the user's current input as a chat message.
+   * It dispatches the `sendChatMessage` action if the input is not empty,
+   * and then clears the input field.
+   */
   const handleSend = () => {
     if (input.trim()) {
       dispatch(sendChatMessage(input));
@@ -31,6 +54,11 @@ export default function ChatBox() {
     }
   };
 
+  /**
+   * Handles the 'keydown' event for the input field.
+   * If the 'Enter' key is pressed, it calls `handleSend` to send the message.
+   * @param {KeyboardEvent<HTMLInputElement>} e - The keyboard event object.
+   */
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       handleSend();

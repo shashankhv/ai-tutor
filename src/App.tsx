@@ -2,6 +2,11 @@ import CodeEditor from "./CodeEditor";
 import ChatBox from "./Chatbox";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 
+/**
+ * The main application component.
+ * It sets up the layout with a header and resizable panels for the code editor and chatbox.
+ * @returns {JSX.Element} The rendered application component.
+ */
 const App = () => {
   return (
     <div className="flex flex-col h-screen p-4 bg-gray-900">
