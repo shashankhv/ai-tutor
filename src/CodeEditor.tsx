@@ -4,12 +4,25 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "./store";
 import { setCode } from "./slices/codeSlice";
 import { sendChatMessage } from "./slices/chatSlice";
-import type { AppDispatch } from './store'; //
+import type { AppDispatch } from './store';
+
+/**
+ * The CodeEditor component provides a user interface for writing, running, and getting feedback on JavaScript code.
+ * It uses the Monaco Editor for a rich editing experience and includes a console to display output.
+ * @returns {JSX.Element} The rendered CodeEditor component.
+ */
 export default function CodeEditor() {
   const code = useSelector((state: RootState) => state.code.code);
   const dispatch = useDispatch<AppDispatch>();
   const [output, setOutput] = useState("");
 
+  /**
+   * Executes a given string of JavaScript code within a sandboxed iframe to safely capture its output.
+   * It captures `console.log` calls and returns them as a single string.
+   * The iframe is removed from the DOM after execution.
+   * @param {string} code - The JavaScript code to execute.
+   * @returns {Promise<string>} A promise that resolves with the captured console output as a string.
+   */
   function runCodeInIframe(code: string): Promise<string> {
     return new Promise((resolve) => {
       const iframe = document.createElement("iframe");
@@ -63,6 +76,10 @@ export default function CodeEditor() {
     });
   }
 
+  /**
+   * Runs the code from the editor using the sandboxed iframe execution.
+   * It updates the component's state with the output or any errors that occur.
+   */
   const runCode = async () => {
     try {
       const iframeOutput = await runCodeInIframe(code);
@@ -72,6 +89,10 @@ export default function CodeEditor() {
     }
   };
 
+  /**
+   * Sends the current code and its console output to the AI for feedback.
+   * It constructs a prompt and dispatches a `sendChatMessage` action.
+   */
   const getFeedback = () => {
     // Compose a feedback prompt with the current code and console output.
     const feedbackRequest = `Please review the following code and its console output. Verify if the challenge is solved correctly or provide feedback.

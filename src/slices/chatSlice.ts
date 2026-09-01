@@ -3,22 +3,43 @@ import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { RootState } from '../store'; // Adjust the path as needed
 
+/**
+ * Represents a single message in the chat.
+ * @property {'user' | 'ai'} sender - The sender of the message.
+ * @property {string} text - The text content of the message.
+ * @property {string[]} [codeBlocks] - Optional array of code snippets extracted from the message.
+ */
 export interface Message {
   sender: 'user' | 'ai';
   text: string;
   codeBlocks?: string[];
 }
 
+/**
+ * Represents the state of the chat slice.
+ * @property {Message[]} messages - The list of messages in the chat.
+ * @property {boolean} loading - A flag indicating if the chat is waiting for a response from the AI.
+ */
 interface ChatState {
   messages: Message[];
   loading: boolean;
 }
 
+/**
+ * The initial state for the chat slice.
+ * It starts with an empty list of messages and loading set to false.
+ */
 const initialState: ChatState = {
   messages: [],
   loading: false,
 };
 
+/**
+ * Extracts JavaScript code blocks from a given string.
+ * It looks for code enclosed in ```javascript ... ```.
+ * @param {string} content - The string to search for code blocks.
+ * @returns {string[]} An array of extracted code blocks.
+ */
 function extractCodeBlocks(content: string): string[] {
   const regex = /```javascript\s*([\s\S]*?)```/g;
   const codeBlocks: string[] = [];
@@ -29,6 +50,15 @@ function extractCodeBlocks(content: string): string[] {
   return codeBlocks;
 }
 
+/**
+ * An async thunk that handles sending a chat message to the AI and processing the response.
+ * 1. It dispatches the user's message to the store.
+ * 2. It sends the recent chat history to the AI API.
+ * 3. It receives the AI's response, extracts any code blocks, and dispatches the AI's message to the store.
+ * It also manages the `loading` state of the chat.
+ * @param {string} content - The text of the user's message.
+ * @param {object} thunkAPI - The thunk API object from Redux Toolkit.
+ */
 export const sendChatMessage = createAsyncThunk(
   'chat/sendChatMessage',
   async (content: string, { dispatch, getState }) => {
@@ -112,10 +142,20 @@ export const sendChatMessage = createAsyncThunk(
   }
 );
 
+/**
+ * The Redux slice for managing the chat state.
+ * It includes reducers for adding messages and extra reducers to handle the
+ * lifecycle of the `sendChatMessage` async thunk (pending, fulfilled, rejected).
+ */
 const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
+    /**
+     * A reducer that adds a new message to the chat history.
+     * @param {ChatState} state - The current chat state.
+     * @param {PayloadAction<Message>} action - The action containing the message to add.
+     */
     addMessage(state, action: PayloadAction<Message>) {
       state.messages.push(action.payload);
     },
